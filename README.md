@@ -1,7 +1,7 @@
 Instructions
 ============
 
-This script ingest a CSV file and outputs an XML feed that conforms to the BV schema for native content imports.
+This script ingests a CSV file and outputs an XML feed that conforms to the BV schema for native content imports.
 The XML file can then be used to push content to Bazaarvoice.
 
 
