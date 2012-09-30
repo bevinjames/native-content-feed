@@ -18,5 +18,5 @@ Here are the list of files in this directory:
 Usage
 -----
 
-    > python native_content_feed_generator-rr.py -c democlient -i native_content-rr.csv -o native_content-rr.xml -m APPROVED -S 5.1
+    > python native_content_feed_generator-rr.py -c democlient -i native_content-rr.csv -o native_content-rr.xml -m APPROVED -S 5.3
     > python name_of_script.py -c clientName - i location_of_input_csv -o location_of_output_xml -m moderationStatus (optional; dafaults to 'SUBMITTED'. Options: 'APPROVED' or 'SUBMITTED') -s schemaVersion (optional; defaults to '5.1')

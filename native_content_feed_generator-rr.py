@@ -5,7 +5,7 @@ from xml.dom.minidom import parseString
 from optparse import OptionParser
 
 ###################################################################
-# Nuts and bolts
+# Helpful defs
 ###################################################################
 def populateTags(parentTag, tagTitle, tagText):
 	node = SubElement(parentTag, tagTitle)
@@ -18,11 +18,31 @@ def checkForExistence(line, num, errorMsg):
 	except IndexError:
 		print errorMsg
 
-def formatDate (sDate, sTime):
+def formatDate(sDate, sTime):
 	# YYYY-MM-DDThh:mm: + ':00+00:00'
 	dateList = sDate.split('/')
 	return '20' + dateList[2] + '-' + dateList[1] + '-' + dateList[0] + 'T' + sTime + ':00+00:00'
 
+def inAgeRange(age):
+	# Need to make this more elegant	
+	if int(age) < 18:
+		return '17orUnder'
+	elif int(age) >= 18 and int(age) < 25:
+		return '18to24'
+	elif int(age) >= 25 and int(age) < 35:
+		return '25to34'
+	elif int(age) >= 35 and int(age) < 45:
+		return '35to44'
+	elif int(age) >= 45 and int(age) < 55:
+		return '45to54'
+	elif int(age) >= 55 and int(age) < 65:
+		return '55to64'
+	elif int(age) >= 65:
+		return '65orOver'
+
+###################################################################
+# Generate Feed
+###################################################################
 def generateFeed(options):
 	# Access files
 	clientFile = open(options.input)
@@ -87,6 +107,23 @@ def generateFeed(options):
 		populateTags(review, 'Rating', rating)
 		populateTags(review, 'SubmissionTime', submissionTime)
 
+		# Context Data value - Age
+		if checkForExistence(line, 8, 'User age information is missing'):
+			if line[8] != '':
+				age = line[8]
+				
+				cdvs = SubElement(review, 'ContextDataValues')
+
+				cdv = SubElement(cdvs, 'ContextDataValue')
+				cdv.set('id', inAgeRange(age))
+				populateTags(cdv, 'ExternalId', inAgeRange(age))
+				populateTags(cdv, 'Label', 'Age')
+
+				cdd = SubElement(cdv, 'ContextDataDimension')
+				cdd.set('id', 'Age')
+				populateTags(cdd, 'ExternalId', 'Age')
+				populateTags(cdd, 'Label', 'Age')
+
 	clientProductFeed.write(xmlPrefix)
 	clientProductFeed.write(tostring(root))
 
@@ -109,41 +146,6 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
