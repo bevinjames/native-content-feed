@@ -3,6 +3,7 @@ import time, sys, csv
 from xml.etree.ElementTree import *
 from xml.dom.minidom import parseString
 from optparse import OptionParser
+from datetime import date
 
 ###################################################################
 # Helpful defs
@@ -18,13 +19,34 @@ def checkForExistence(line, num, errorMsg):
 	except IndexError:
 		print errorMsg
 
-def formatDate(sDate, sTime):
-	# YYYY-MM-DDThh:mm: + ':00+00:00'
-	dateList = sDate.split('/')
-	return '20' + dateList[2] + '-' + dateList[1] + '-' + dateList[0] + 'T' + sTime + ':00+00:00'
+def formatDate(sDate):
+	# 20YY-MM-DD
+	m, d, y = sDate.split('/')
+	y = '20' + y
+	return date(int(y), int(m), int(d)).isoformat()
+
+def populateCdv(cdvs, line, num, label):	
+	if line[num] != '':
+		elem = line[num]
+
+		# Need to make this more elegant...
+		if label == 'Gender':
+			cdvId = line[num].title()
+		elif label == 'Age':
+			cdvId = inAgeRange(line[num])
+
+		cdv = SubElement(cdvs, 'ContextDataValue')
+		cdv.set('id', cdvId)
+		populateTags(cdv, 'ExternalId', cdvId)
+		populateTags(cdv, 'Label', label)
+
+		cdd = SubElement(cdv, 'ContextDataDimension')
+		cdd.set('id', label)
+		populateTags(cdd, 'ExternalId', label)
+		populateTags(cdd, 'Label', label)
 
 def inAgeRange(age):
-	# Need to make this more elegant	
+	# Need to make this more elegant...
 	if int(age) < 18:
 		return '17orUnder'
 	elif int(age) >= 18 and int(age) < 25:
@@ -45,7 +67,7 @@ def inAgeRange(age):
 ###################################################################
 def generateFeed(options):
 	# Access files
-	clientFile = open(options.input)
+	clientFile = open(options.input, 'rU')
 	clientProductFeed = open(options.output, 'w')
 	dialect = csv.Sniffer().sniff(clientFile.read(1024))
 	clientFile.seek(0)
@@ -53,7 +75,7 @@ def generateFeed(options):
 
 	# Define Feed tag values
 	generateDateTime = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
-	schemaVersion = 'http://www.bazaarvoice.com/xs/PRR/SyndicationFeed/' + options.schema
+	schemaVersion = 'http://www.bazaarvoice.com/xs/PRR/StandardClientFeed/' + options.schema
 
 	# Build necessary header
 	xmlPrefix = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -65,7 +87,7 @@ def generateFeed(options):
 	i = 0
 
 	# Loop through input
-	reader.next() # This starts the iteration at row two, thereby, ignoring the first row with titles
+	reader.next()
 	for line in reader:
 		productId = line[0]
 		userId = line[1]
@@ -75,7 +97,9 @@ def generateFeed(options):
 		rating = line[5]
 		sDate = line[6]
 		sTime = line[7]
-		submissionTime = formatDate(sDate, sTime)
+
+		fDate = formatDate(sDate)
+		submissionTime = fDate + 'T' + sTime + ':00+00:00'
 
 		i = i + 1
 		
@@ -107,22 +131,22 @@ def generateFeed(options):
 		populateTags(review, 'Rating', rating)
 		populateTags(review, 'SubmissionTime', submissionTime)
 
+		# Context Data values
+		cdvs = SubElement(review, 'ContextDataValues')
+
 		# Context Data value - Age
 		if checkForExistence(line, 8, 'User age information is missing'):
-			if line[8] != '':
-				age = line[8]
-				
-				cdvs = SubElement(review, 'ContextDataValues')
+			populateCdv(cdvs, line, 8, 'Age')
 
-				cdv = SubElement(cdvs, 'ContextDataValue')
-				cdv.set('id', inAgeRange(age))
-				populateTags(cdv, 'ExternalId', inAgeRange(age))
-				populateTags(cdv, 'Label', 'Age')
+		# User Location
+		if checkForExistence(line, 9, 'User location is missing'):
+			if line[9] != '':
+				populateTags(review, 'ReviewerLocation', line[9])
 
-				cdd = SubElement(cdv, 'ContextDataDimension')
-				cdd.set('id', 'Age')
-				populateTags(cdd, 'ExternalId', 'Age')
-				populateTags(cdd, 'Label', 'Age')
+		# Context Data value - Gender
+		if checkForExistence(line, 10, 'User gender information is missing'):
+			populateCdv(cdvs, line, 10, 'Gender')
+
 
 	clientProductFeed.write(xmlPrefix)
 	clientProductFeed.write(tostring(root))
